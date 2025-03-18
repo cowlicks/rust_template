@@ -6,10 +6,10 @@ assert_eq!(add(1, 2), 3);
 ```
 */
 #![warn(
+    unreachable_pub,
     missing_debug_implementations,
     missing_docs,
     redundant_lifetimes,
-    non_local_definitions,
     unsafe_code,
     non_local_definitions
 )]
