@@ -11,7 +11,9 @@ assert_eq!(add(1, 2), 3);
     missing_docs,
     redundant_lifetimes,
     unsafe_code,
-    non_local_definitions
+    non_local_definitions,
+    clippy::needless_pass_by_value,
+    clippy::needless_pass_by_ref_mut
 )]
 
 use tracing::info;
