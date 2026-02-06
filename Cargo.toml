@@ -2,6 +2,10 @@
 name = "hypercore_schema"
 version = "0.1.0"
 edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Data structures shared between hypercore and hypercore-protocol"
+documentation = "https://docs.rs/hypercore_schema"
+repository = "https://github.com/cowlicks/hypercore_schema"
 
 [dependencies]
 blake2 = "0.10.6"
