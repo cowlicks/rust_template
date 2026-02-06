@@ -1,7 +1,16 @@
 [package]
-name = "rust"
+name = "hypercore_schema"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tracing = "0.1.40"
+blake2 = "0.10.6"
+byteorder = "1.5.0"
+compact-encoding = "2.2.0"
+ed25519-dalek = "2.2.0"
+flat-tree = "6.0.0"
+merkle-tree-stream = "0.12.1"
+pretty-hash = "0.4.1"
+
+[dev-dependencies]
+data-encoding = "2.10.0"

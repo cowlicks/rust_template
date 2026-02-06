@@ -18,7 +18,10 @@ use blake2::{
     digest::{FixedOutput, generic_array::GenericArray, typenum::U32},
 };
 use byteorder::{BigEndian, WriteBytesExt};
-use compact_encoding::{EncodingError, FixedWidthEncoding, to_encoded_bytes};
+use compact_encoding::{
+    CompactEncoding, EncodingError, FixedWidthEncoding, VecEncodable, as_array, encoded_size_usize,
+    map_decode, map_encode, sum_encoded_size, to_encoded_bytes,
+};
 use ed25519_dalek::VerifyingKey;
 use merkle_tree_stream::{Node as NodeTrait, NodeKind, NodeParts};
 use pretty_hash::fmt as pretty_fmt;
@@ -440,18 +443,195 @@ pub struct DataSeek {
     /// TODO: Document
     pub nodes: Vec<Node>,
 }
-/// Create a signable buffer for tree. This is treeSignable in Javascript.
-/// See https://github.com/hypercore-protocol/hypercore/blob/70b271643c4e4b1e5ecae5bb579966dfe6361ff3/lib/caps.js#L17
-pub(crate) fn signable_tree(hash: &[u8], length: u64, fork: u64) -> Box<[u8]> {
-    (|| {
-        Ok::<_, EncodingError>(to_encoded_bytes!(
-            &TREE,
-            compact_encoding::as_array::<32>(hash)?,
-            length.as_fixed_width(),
-            fork.as_fixed_width()
+
+impl CompactEncoding for Node {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        Ok(sum_encoded_size!(self.index, self.length) + 32)
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        let hash = as_array::<32>(&self.hash)?;
+        Ok(map_encode!(buffer, self.index, self.length, hash))
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let ((index, length, hash), rest) = map_decode!(buffer, [u64, u64, [u8; 32]]);
+        Ok((Node::new(index, hash.to_vec(), length), rest))
+    }
+}
+
+impl VecEncodable for Node {
+    fn vec_encoded_size(vec: &[Self]) -> Result<usize, EncodingError>
+    where
+        Self: Sized,
+    {
+        let mut out = encoded_size_usize(vec.len());
+        for x in vec {
+            out += x.encoded_size()?;
+        }
+        Ok(out)
+    }
+}
+
+impl CompactEncoding for RequestBlock {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        Ok(sum_encoded_size!(self.index, self.nodes))
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        Ok(map_encode!(buffer, self.index, self.nodes))
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let ((index, nodes), rest) = map_decode!(buffer, [u64, u64]);
+        Ok((RequestBlock { index, nodes }, rest))
+    }
+}
+
+impl CompactEncoding for RequestSeek {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        self.bytes.encoded_size()
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        self.bytes.encode(buffer)
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let (bytes, rest) = u64::decode(buffer)?;
+        Ok((RequestSeek { bytes }, rest))
+    }
+}
+
+impl CompactEncoding for RequestUpgrade {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        Ok(sum_encoded_size!(self.start, self.length))
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        Ok(map_encode!(buffer, self.start, self.length))
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let ((start, length), rest) = map_decode!(buffer, [u64, u64]);
+        Ok((RequestUpgrade { start, length }, rest))
+    }
+}
+
+impl CompactEncoding for DataBlock {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        Ok(sum_encoded_size!(self.index, self.value, self.nodes))
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        Ok(map_encode!(buffer, self.index, self.value, self.nodes))
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let ((index, value, nodes), rest) = map_decode!(buffer, [u64, Vec<u8>, Vec<Node>]);
+        Ok((
+            DataBlock {
+                index,
+                value,
+                nodes,
+            },
+            rest,
         ))
-    })()
-    .expect("Encoding should not fail")
+    }
+}
+
+impl CompactEncoding for DataHash {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        Ok(sum_encoded_size!(self.index, self.nodes))
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        Ok(map_encode!(buffer, self.index, self.nodes))
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let ((index, nodes), rest) = map_decode!(buffer, [u64, Vec<Node>]);
+        Ok((DataHash { index, nodes }, rest))
+    }
+}
+
+impl CompactEncoding for DataSeek {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        Ok(sum_encoded_size!(self.bytes, self.nodes))
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        Ok(map_encode!(buffer, self.bytes, self.nodes))
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let ((bytes, nodes), rest) = map_decode!(buffer, [u64, Vec<Node>]);
+        Ok((DataSeek { bytes, nodes }, rest))
+    }
+}
+
+// from:
+// https://github.com/holepunchto/hypercore/blob/d21ebdeca1b27eb4c2232f8af17d5ae939ee97f2/lib/messages.js#L394
+impl CompactEncoding for DataUpgrade {
+    fn encoded_size(&self) -> Result<usize, EncodingError> {
+        Ok(sum_encoded_size!(
+            self.start,
+            self.length,
+            self.nodes,
+            self.additional_nodes,
+            self.signature
+        ))
+    }
+
+    fn encode<'a>(&self, buffer: &'a mut [u8]) -> Result<&'a mut [u8], EncodingError> {
+        Ok(map_encode!(
+            buffer,
+            self.start,
+            self.length,
+            self.nodes,
+            self.additional_nodes,
+            self.signature
+        ))
+    }
+
+    fn decode(buffer: &[u8]) -> Result<(Self, &[u8]), EncodingError>
+    where
+        Self: Sized,
+    {
+        let ((start, length, nodes, additional_nodes, signature), rest) =
+            map_decode!(buffer, [u64, u64, Vec<Node>, Vec<Node>, Vec<u8>]);
+        Ok((
+            DataUpgrade {
+                start,
+                length,
+                nodes,
+                additional_nodes,
+                signature,
+            },
+            rest,
+        ))
+    }
 }
 
 #[cfg(test)]
