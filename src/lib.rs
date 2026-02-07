@@ -124,7 +124,7 @@ impl Hash {
     }
 
     /// Returns a byte slice of this `Hash`'s contents.
-    pub(crate) fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         self.hash.as_slice()
     }
 
@@ -225,13 +225,13 @@ impl std::ops::DerefMut for Hash {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     /// This node's index in the Merkle tree
-    pub(crate) index: u64,
+    pub index: u64,
     /// Hash of the data in this node
     // TODO make this [u8; 32] like:
     // https://github.com/holepunchto/hypercore/blob/d21ebdeca1b27eb4c2232f8af17d5ae939ee97f2/lib/messages.js#L246
     pub(crate) hash: Vec<u8>,
     /// Number of bytes in this [`Node::data`]
-    pub(crate) length: u64,
+    pub length: u64,
     /// Index of this nodes parent
     pub(crate) parent: u64,
     /// Hypercore's data. Can be receieved after the rest of the node, so it's optional.
