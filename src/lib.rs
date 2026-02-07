@@ -229,14 +229,15 @@ pub struct Node {
     /// Hash of the data in this node
     // TODO make this [u8; 32] like:
     // https://github.com/holepunchto/hypercore/blob/d21ebdeca1b27eb4c2232f8af17d5ae939ee97f2/lib/messages.js#L246
-    pub(crate) hash: Vec<u8>,
+    pub hash: Vec<u8>,
     /// Number of bytes in this [`Node::data`]
     pub length: u64,
     /// Index of this nodes parent
     pub(crate) parent: u64,
     /// Hypercore's data. Can be receieved after the rest of the node, so it's optional.
     pub(crate) data: Option<Vec<u8>>,
-    pub(crate) blank: bool,
+    /// If blank
+    pub blank: bool,
 }
 
 impl Node {
