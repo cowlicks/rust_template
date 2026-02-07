@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+* Make pub: Node.length, Node.index, Hash.as_bytes
+
 ### Removed
 
 
